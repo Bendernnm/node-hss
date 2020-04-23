@@ -5,11 +5,28 @@ const { EventEmitter } = require('events');
 
 const mime = require('mime');
 
-function errorResponse(res, { msg, headers, statusCode }) {
-  res.writeHead(statusCode, headers);
-  msg && res.write(Buffer.from(JSON.stringify({ msg })));
+const CONSTANTS = require('./const');
 
-  return res;
+function errorResponse({ msg, headers, statusCode }, end = true) {
+  this.writeHead(statusCode, headers);
+
+  if (msg) {
+    let payload;
+
+    try {
+      payload = JSON.stringify({ msg });
+    } catch (err) {
+      throw new Error('Incorrect payload.');
+    }
+
+    this.write(Buffer.from(payload));
+  }
+
+  if (end) {
+    return this.end();
+  }
+
+  return this;
 }
 
 class Server extends EventEmitter {
@@ -35,7 +52,30 @@ class Server extends EventEmitter {
     this.path = opts.path;
     this.port = opts.port || 4040;
     this.host = opts.host || 'localhost';
+    this.setHeaders = opts.setHeaders || {};
     this.staticPath = path.join(process.cwd(), this.path);
+  }
+
+  // files utils
+  getFileInfo(url) {
+    const fileName = url === '/' ? '/index.html' : url;
+    const filePath = path.join(this.staticPath, fileName);
+    const fileExtension = path.extname(fileName).substring(1);
+    const fileMimeType = mime.getType(fileExtension);
+
+    return {
+      fileName,
+      filePath,
+      fileExtension,
+      fileMimeType,
+    };
+  }
+
+  // emit immediate emit
+  immediateEmit(eventName, args = {}) {
+    setImmediate(() => this.emit(eventName, args));
+
+    return this;
   }
 
   // server control block
@@ -54,9 +94,9 @@ class Server extends EventEmitter {
       return;
     }
 
-    this.once('serverStop', () => {
+    this.once(CONSTANTS.EVENTS.SERVER_STOP, () => {
       this.startServer();
-      this.emit('serverRestart');
+      this.emit(CONSTANTS.EVENTS.SERVER_RESTART);
     });
     this.stopServer();
 
@@ -64,64 +104,82 @@ class Server extends EventEmitter {
   }
 
   startServer() {
+    if (this.server) {
+      this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, { msg: CONSTANTS.MESSAGES.SERVER_ALREADY_RUNNING });
+      return this.server;
+    }
+
     this.server = http.createServer((req, res) => {
-      const url = req.url;
+      const { url, method } = req;
 
-      setImmediate(() => this.emit('serverRequest', { url }));
+      this.immediateEmit(CONSTANTS.EVENTS.SERVER_REQUEST, { url, code: CONSTANTS.EVENT_CODES.SERVER_REQUEST });
 
-      if (req.method !== 'GET' && req.method !== 'HEAD') {
-        setImmediate(() => this.emit('serverWarning', { method: req.method, msg: 'Wrong method' }));
+      // if request's method is wrong
+      if (method !== CONSTANTS.REQUEST_METHODS.GET && method !== CONSTANTS.REQUEST_METHODS.HEAD) {
+        this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
+          method: req.method,
+          msg   : CONSTANTS.MESSAGES.WRONG_MESSAGE,
+          code  : CONSTANTS.EVENT_CODES.WRONG_MESSAGE,
+        });
 
-        return errorResponse(res, { statusCode: 405, headers: { Allow: 'GET, HEAD', 'Content-Length': '0' } }).end();
+        return errorResponse.bind(res)({ statusCode: 405, headers: { Allow: 'GET, HEAD', 'Content-Length': '0' } });
       }
 
-      const fileName = url === '/' ? '/index.html' : url;
-      const filePath = path.join(this.staticPath, fileName);
-      const fileExtension = path.extname(fileName).substring(1);
-      const fileMimeType = mime.getType(fileExtension);
+      const { filePath, fileMimeType } = this.getFileInfo(url);
 
+      // check mimetype
       if (!fileMimeType) {
-        setImmediate(() => this.emit('serverWarning', { msg: 'Not allowed file\'s format' }));
+        this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
+          msg : CONSTANTS.MESSAGES.WRONG_FILE_FORMAT,
+          code: CONSTANTS.EVENT_CODES.WRONG_FILE_FORMAT,
+        });
 
-        return errorResponse(res, {
+        return errorResponse.bind(res)({
           statusCode: 400,
           headers   : { 'Content-Length': '0' },
-          msg       : 'Not allowed file\'s format',
-        }).end();
+          msg       : CONSTANTS.EVENT_CODES.WRONG_FILE_FORMAT,
+        });
       }
 
+      // is file's path safe?
       if (!filePath.startsWith(this.staticPath)) {
-        setImmediate(() => this.emit('serverWarning', { msg: 'File not found' }));
+        this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
+          msg : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+          code: CONSTANTS.EVENT_CODES.FILE_NOT_FOUND,
+        });
 
-        return errorResponse(res, {
+        return errorResponse.bind(res)({
           statusCode: 404,
           headers   : { 'Content-Length': '0' },
-          msg       : 'File not found',
-        }).end();
+          msg       : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+        });
       }
 
-      res.writeHead(200, { 'Content-Type': fileMimeType });
+      const headers = { ...this.setHeaders, 'Content-Type': fileMimeType };
+
+      // setHeaders
+      res.writeHead(200, headers);
 
       const stream = fs.createReadStream(filePath);
 
+      // stream error handler
       stream.on('error', (err) => {
-        setImmediate(() => this.emit('streamError', err));
+        this.immediateEmit(CONSTANTS.EVENTS.STREAM_ERROR, err);
 
-        errorResponse(res, {
+        return errorResponse.bind(res)({
           statusCode: 404,
+          msg       : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
           headers   : { 'Content-Type': 'application/json' },
-          msg       : 'File not found',
-        }).end();
+        });
       });
 
       stream.pipe(res);
     });
 
-    this.server.on('error', (err) => this.emit('serverError', err));
-    this.server.on('listening', () => this.emit('serverStart', { host: this.host, port: this.port }));
+    this.server.on('error', (err) => this.emit(CONSTANTS.EVENTS.SERVER_ERROR, err));
+    this.server.on('listening', () => this.emit(CONSTANTS.EVENTS.SERVER_START, { host: this.host, port: this.port }));
     this.server.on('close', () => {
-      // console.log('CLOSE EVENT!!!');
-      this.emit('serverStop');
+      this.emit(CONSTANTS.EVENTS.SERVER_STOP);
       this.server = null;
     });
 
