@@ -4,13 +4,13 @@ module.exports = {
     HEAD: 'HEAD',
   },
   EVENTS         : {
-    SERVER_WARNING: 'serverWarning',
-    SERVER_START  : 'serverStart',
     SERVER_STOP   : 'serverStop',
-    SERVER_RESTART: 'serverRestart',
-    SERVER_ERROR  : 'serverError',
-    SERVER_REQUEST: 'serverRequest',
+    SERVER_START  : 'serverStart',
     STREAM_ERROR  : 'streamError',
+    SERVER_ERROR  : 'serverError',
+    SERVER_RESTART: 'serverRestart',
+    SERVER_REQUEST: 'serverRequest',
+    SERVER_WARNING: 'serverWarning',
   },
   EVENT_CODES    : {
     SERVER_REQUEST   : 1022,
@@ -26,7 +26,7 @@ module.exports = {
   MESSAGES       : {
     WRONG_MESSAGE         : 'Wrong message',
     FILE_NOT_FOUND        : 'File not found',
+    SERVER_ALREADY_RUNNING: 'Server already running',
     WRONG_FILE_FORMAT     : 'Not allowed file\'s format',
-    SERVER_ALREADY_RUNNING: 'Server already running'
   },
 };

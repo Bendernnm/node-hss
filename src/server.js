@@ -105,14 +105,16 @@ class Server extends EventEmitter {
 
   startServer() {
     if (this.server) {
-      this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, { msg: CONSTANTS.MESSAGES.SERVER_ALREADY_RUNNING });
+      this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING,
+        { msg: CONSTANTS.MESSAGES.SERVER_ALREADY_RUNNING });
       return this.server;
     }
 
     this.server = http.createServer((req, res) => {
       const { url, method } = req;
 
-      this.immediateEmit(CONSTANTS.EVENTS.SERVER_REQUEST, { url, code: CONSTANTS.EVENT_CODES.SERVER_REQUEST });
+      this.immediateEmit(CONSTANTS.EVENTS.SERVER_REQUEST,
+        { url, code: CONSTANTS.EVENT_CODES.SERVER_REQUEST });
 
       // if request's method is wrong
       if (method !== CONSTANTS.REQUEST_METHODS.GET && method !== CONSTANTS.REQUEST_METHODS.HEAD) {
