@@ -1,4 +1,5 @@
 const fs = require('fs');
+const URL = require('url');
 const http = require('http');
 const path = require('path');
 const { EventEmitter } = require('events');
@@ -50,10 +51,16 @@ class Server extends EventEmitter {
     }
 
     this.path = opts.path;
+    this.staticPath = path.join(process.cwd(), this.path);
+
     this.port = opts.port || 4040;
     this.host = opts.host || 'localhost';
+
     this.setHeaders = opts.setHeaders || {};
-    this.staticPath = path.join(process.cwd(), this.path);
+
+    this.downloadFile = opts.downloadFile;
+    this.downloadFileName = opts.downloadFileName;
+    this.downloadFileQuery = opts.downloadFileQuery;
   }
 
   // files utils
@@ -112,9 +119,16 @@ class Server extends EventEmitter {
 
     this.server = http.createServer((req, res) => {
       const { url, method } = req;
+      const { pathname, query } = URL.parse(url, true);
 
       this.immediateEmit(CONSTANTS.EVENTS.SERVER_REQUEST,
-        { url, code: CONSTANTS.EVENT_CODES.SERVER_REQUEST });
+        {
+          url,
+          query,
+          method,
+          pathname,
+          code: CONSTANTS.EVENT_CODES.SERVER_REQUEST,
+        });
 
       // if request's method is wrong
       if (method !== CONSTANTS.REQUEST_METHODS.GET && method !== CONSTANTS.REQUEST_METHODS.HEAD) {
@@ -124,10 +138,16 @@ class Server extends EventEmitter {
           code  : CONSTANTS.EVENT_CODES.WRONG_MESSAGE,
         });
 
-        return errorResponse.bind(res)({ statusCode: 405, headers: { Allow: 'GET, HEAD', 'Content-Length': '0' } });
+        return errorResponse.bind(res)({
+          statusCode: 405,
+          headers   : {
+            Allow           : 'GET, HEAD',
+            'Content-Length': '0',
+          },
+        });
       }
 
-      const { filePath, fileMimeType } = this.getFileInfo(url);
+      const { filePath, fileName, fileMimeType, fileExtension } = this.getFileInfo(pathname);
 
       // check mimetype
       if (!fileMimeType) {
@@ -157,7 +177,20 @@ class Server extends EventEmitter {
         });
       }
 
-      const headers = { ...this.setHeaders, 'Content-Type': fileMimeType };
+      const headers = {
+        ...this.setHeaders,
+        'Content-Type': fileMimeType,
+      };
+
+      if (this.downloadFile || (this.downloadFileQuery && query[this.downloadFileQuery])) {
+        let downloadFileName = this.downloadFileName || fileName;
+
+        if (typeof this.downloadFileName === 'function') {
+          downloadFileName = this.downloadFileName(fileName, fileExtension);
+        }
+
+        headers['Content-Disposition'] = `attachment; filename="${downloadFileName}"`;
+      }
 
       // setHeaders
       res.writeHead(200, headers);
@@ -179,7 +212,10 @@ class Server extends EventEmitter {
     });
 
     this.server.on('error', (err) => this.emit(CONSTANTS.EVENTS.SERVER_ERROR, err));
-    this.server.on('listening', () => this.emit(CONSTANTS.EVENTS.SERVER_START, { host: this.host, port: this.port }));
+    this.server.on('listening', () => this.emit(CONSTANTS.EVENTS.SERVER_START, {
+      host: this.host,
+      port: this.port,
+    }));
     this.server.on('close', () => {
       this.emit(CONSTANTS.EVENTS.SERVER_STOP);
       this.server = null;
