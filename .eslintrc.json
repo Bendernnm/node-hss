@@ -20,6 +20,7 @@
     "prefer-destructuring": "off",
     "no-prototype-builtins": "off",
     "no-underscore-dangle": "off",
-    "no-param-reassign": "off"
+    "no-param-reassign": "off",
+    "object-curly-newline": "off"
   }
 }
