@@ -126,7 +126,7 @@ class Server extends EventEmitter {
     }
 
     this.server = http.createServer(async (req, res) => {
-      let useCache = false;
+      let cachingThisFile = false;
       const { url, method } = req;
       const { pathname, query } = URL.parse(url, true);
 
@@ -198,18 +198,20 @@ class Server extends EventEmitter {
           downloadFileName = this.downloadFileName(fileName, fileExtension);
         }
 
-        headers['Content-Disposition'] = `attachment; filename="${downloadFileName}"`;
+        headers['Content-Disposition'] = `attachment; filename="${ downloadFileName }"`;
       }
 
       // setHeaders
       res.writeHead(200, headers);
 
       // try to get file from cache
-      const fileFromCache = this.filesCache.getFromCache(fileName);
+      if (this.useCache) {
+        const fileFromCache = this.filesCache.getFromCache(fileName);
 
-      if (fileFromCache) {
-        res.write(fileFromCache);
-        return res.end();
+        if (fileFromCache) {
+          res.write(fileFromCache);
+          return res.end();
+        }
       }
 
       // can we store file to the cache?
@@ -218,13 +220,13 @@ class Server extends EventEmitter {
 
         if (this.filesCache.hasAvailableCapacity(fileStats.size)
             && this.filesCache.isAllowedSizeOfFile(fileStats.size)) {
-          useCache = true;
+          cachingThisFile = true;
         }
       }
 
       const stream = fs.createReadStream(filePath);
 
-      if (useCache) {
+      if (cachingThisFile) {
         this.filesCache.addToCache(fileName, stream);
       }
 
