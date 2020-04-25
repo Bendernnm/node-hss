@@ -21,6 +21,8 @@
     "no-prototype-builtins": "off",
     "no-underscore-dangle": "off",
     "no-param-reassign": "off",
-    "object-curly-newline": "off"
+    "object-curly-newline": "off",
+    "no-return-assign": "off",
+    "array-bracket-spacing": "off"
   }
 }
