@@ -7,6 +7,7 @@ const { EventEmitter } = require('events');
 const mime = require('mime');
 
 const CONSTANTS = require('./const');
+const FilesCache = require('./files-cache');
 
 function errorResponse({ msg, headers, statusCode }, end = true) {
   this.writeHead(statusCode, headers);
@@ -61,6 +62,13 @@ class Server extends EventEmitter {
     this.downloadFile = opts.downloadFile;
     this.downloadFileName = opts.downloadFileName;
     this.downloadFileQuery = opts.downloadFileQuery;
+
+    this.useCache = opts.useCache;
+    this.cacheOpts = opts.cacheOpts;
+
+    if (this.useCache) {
+      this.filesCache = new FilesCache(this.cacheOpts);
+    }
   }
 
   // files utils
@@ -117,7 +125,8 @@ class Server extends EventEmitter {
       return this.server;
     }
 
-    this.server = http.createServer((req, res) => {
+    this.server = http.createServer(async (req, res) => {
+      let useCache = false;
       const { url, method } = req;
       const { pathname, query } = URL.parse(url, true);
 
@@ -195,7 +204,29 @@ class Server extends EventEmitter {
       // setHeaders
       res.writeHead(200, headers);
 
+      // try to get file from cache
+      const fileFromCache = this.filesCache.getFromCache(fileName);
+
+      if (fileFromCache) {
+        res.write(fileFromCache);
+        return res.end();
+      }
+
+      // can we store file to the cache?
+      if (this.useCache) {
+        const fileStats = await fs.promises.stat(filePath);
+
+        if (this.filesCache.hasAvailableCapacity(fileStats.size)
+            && this.filesCache.isAllowedSizeOfFile(fileStats.size)) {
+          useCache = true;
+        }
+      }
+
       const stream = fs.createReadStream(filePath);
+
+      if (useCache) {
+        this.filesCache.addToCache(fileName, stream);
+      }
 
       // stream error handler
       stream.on('error', (err) => {
