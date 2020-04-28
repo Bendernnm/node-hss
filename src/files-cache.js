@@ -43,7 +43,7 @@ class FilesCache {
     const cache = this.cache.get(fileName);
 
     if (!cache) {
-      return null;
+      throw new Error('Item not found');
     }
 
     if (this.expirationDuration && cache.expiredAt && cache.expiredAt < Date.now()) {

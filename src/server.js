@@ -205,7 +205,7 @@ class Server extends EventEmitter {
       res.writeHead(200, headers);
 
       // try to get file from cache
-      if (this.useCache) {
+      if (this.useCache && this.filesCache.hasCache(fileName)) {
         const fileFromCache = this.filesCache.getFromCache(fileName);
 
         if (fileFromCache) {
