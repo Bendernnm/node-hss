@@ -216,7 +216,17 @@ class Server extends EventEmitter {
 
       // can we store file to the cache?
       if (this.useCache) {
-        const fileStats = await fs.promises.stat(filePath);
+        let fileStats;
+
+        try {
+          fileStats = await fs.promises.stat(filePath);
+        } catch (err) {
+          return errorResponse.bind(res)({
+            statusCode: 404,
+            msg       : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+            headers   : { 'Content-Type': 'application/json' },
+          });
+        }
 
         if (this.filesCache.hasAvailableCapacity(fileStats.size)
             && this.filesCache.isAllowedSizeOfFile(fileStats.size)) {
