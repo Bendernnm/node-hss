@@ -64,9 +64,15 @@ class Server extends EventEmitter {
     this.downloadFileQuery = opts.downloadFileQuery;
 
     this.useCache = opts.useCache;
-    this.cacheOpts = opts.cacheOpts;
 
     if (this.useCache) {
+      this.cacheOpts = opts.cacheOpts;
+
+      if (!this.cacheOpts.maxSizeOfCache) {
+        this.cacheOpts.maxSizeOfCache = 1024 * 1024 * 10; // default 10MB
+        this.cacheOpts.maxSizeOfCachedFile = 1024 * 1024 * 2; // default 2MB
+      }
+
       this.filesCache = new FilesCache(this.cacheOpts);
     }
   }
