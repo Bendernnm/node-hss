@@ -7,18 +7,21 @@ const { EventEmitter } = require('events');
 const mime = require('mime');
 
 const CONSTANTS = require('./const');
+const templates = require('./templates');
 const FilesCache = require('./files-cache');
 
-function errorResponse({ msg, headers, statusCode }, end = true) {
+function errorResponse({ msg, headers = {}, statusCode }, end = true) {
   this.writeHead(statusCode, headers);
 
   if (msg) {
-    let payload;
+    let payload = msg;
 
-    try {
-      payload = JSON.stringify({ msg });
-    } catch (err) {
-      throw new Error('Incorrect payload.');
+    if (headers['Content-Type'] === 'application/json') {
+      try {
+        payload = JSON.stringify({ msg });
+      } catch (err) {
+        throw new Error('Incorrect payload.');
+      }
     }
 
     this.write(Buffer.from(payload));
@@ -62,6 +65,12 @@ class Server extends EventEmitter {
     this.downloadFile = opts.downloadFile;
     this.downloadFileName = opts.downloadFileName;
     this.downloadFileQuery = opts.downloadFileQuery;
+
+    this.useTemplates = opts.useTemplates;
+
+    if (this.useTemplates) {
+      this.templates = { ...templates, ...(opts.templates || {}) };
+    }
 
     this.useCache = opts.useCache;
 
@@ -155,10 +164,10 @@ class Server extends EventEmitter {
 
         return errorResponse.bind(res)({
           statusCode: 405,
-          headers   : {
-            Allow           : 'GET, HEAD',
-            'Content-Length': '0',
-          },
+          headers   : { Allow: 'GET, HEAD' },
+          msg       : this.useTemplates
+            ? this.templates.notAllowedMethod
+            : CONSTANTS.MESSAGES.WRONG_METHOD,
         });
       }
 
@@ -173,8 +182,9 @@ class Server extends EventEmitter {
 
         return errorResponse.bind(res)({
           statusCode: 400,
-          headers   : { 'Content-Length': '0' },
-          msg       : CONSTANTS.EVENT_CODES.WRONG_FILE_FORMAT,
+          msg       : this.useTemplates
+            ? this.templates.wrongFileFormat
+            : CONSTANTS.MESSAGES.WRONG_FILE_FORMAT,
         });
       }
 
@@ -187,8 +197,9 @@ class Server extends EventEmitter {
 
         return errorResponse.bind(res)({
           statusCode: 404,
-          headers   : { 'Content-Length': '0' },
-          msg       : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+          msg       : this.useTemplates
+            ? this.templates.fileNotFound
+            : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
         });
       }
 
@@ -204,7 +215,7 @@ class Server extends EventEmitter {
           downloadFileName = this.downloadFileName(fileName, fileExtension);
         }
 
-        headers['Content-Disposition'] = `attachment; filename="${ downloadFileName }"`;
+        headers['Content-Disposition'] = `attachment; filename="${downloadFileName}"`;
       }
 
       // setHeaders
@@ -229,8 +240,9 @@ class Server extends EventEmitter {
         } catch (err) {
           return errorResponse.bind(res)({
             statusCode: 404,
-            msg       : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
-            headers   : { 'Content-Type': 'application/json' },
+            msg       : this.useTemplates
+              ? this.templates.fileNotFound
+              : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
           });
         }
 
@@ -250,10 +262,11 @@ class Server extends EventEmitter {
       stream.on('error', (err) => {
         this.immediateEmit(CONSTANTS.EVENTS.STREAM_ERROR, err);
 
-        return errorResponse.bind(res)({
+        errorResponse.bind(res)({
           statusCode: 404,
-          msg       : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
-          headers   : { 'Content-Type': 'application/json' },
+          msg       : this.useTemplates
+            ? this.templates.fileNotFound
+            : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
         });
       });
 
