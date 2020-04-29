@@ -9,30 +9,7 @@ const mime = require('mime');
 const CONSTANTS = require('./const');
 const templates = require('./templates');
 const FilesCache = require('./files-cache');
-
-function errorResponse({ msg, headers = {}, statusCode }, end = true) {
-  this.writeHead(statusCode, headers);
-
-  if (msg) {
-    let payload = msg;
-
-    if (headers['Content-Type'] === 'application/json') {
-      try {
-        payload = JSON.stringify({ msg });
-      } catch (err) {
-        throw new Error('Incorrect payload.');
-      }
-    }
-
-    this.write(Buffer.from(payload));
-  }
-
-  if (end) {
-    return this.end();
-  }
-
-  return this;
-}
+const { errorResponse } = require('./utils');
 
 class Server extends EventEmitter {
   constructor(opts = { path: 'public' }) {
