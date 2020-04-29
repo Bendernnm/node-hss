@@ -24,6 +24,7 @@ module.exports = {
     FILE_NOT_FOUND   : 1044,
   },
   MESSAGES       : {
+    WRONG_METHOD          : 'Wrong method',
     WRONG_MESSAGE         : 'Wrong message',
     FILE_NOT_FOUND        : 'File not found',
     SERVER_ALREADY_RUNNING: 'Server already running',
