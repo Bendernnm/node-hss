@@ -31,24 +31,30 @@ class Server extends EventEmitter {
       throw new Error('Port must be a number.');
     }
 
+    // static folder opts
     this.path = opts.path;
     this.staticPath = path.join(process.cwd(), this.path);
 
+    // server opts
     this.port = opts.port || 4040;
     this.host = opts.host || 'localhost';
 
+    // default headers
     this.setHeaders = opts.setHeaders || {};
 
+    // download parameters
     this.downloadFile = opts.downloadFile;
     this.downloadFileName = opts.downloadFileName;
     this.downloadFileQuery = opts.downloadFileQuery;
 
+    // template opts
     this.useTemplates = opts.useTemplates;
 
     if (this.useTemplates) {
       this.templates = { ...templates, ...(opts.templates || {}) };
     }
 
+    // cache opts
     this.useCache = opts.useCache;
 
     if (this.useCache) {
