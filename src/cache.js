@@ -1,6 +1,6 @@
 const { Readable } = require('stream');
 
-class FilesCache {
+class Cache {
   constructor({ maxSizeOfCache, maxSizeOfCachedFile, expirationDuration }) {
     if (expirationDuration && (typeof expirationDuration !== 'number' || expirationDuration <= 0)) {
       throw new Error('Incorrect expiration duration');
@@ -56,7 +56,7 @@ class FilesCache {
 
   addToCache(fileName, obj) {
     if (obj instanceof Buffer) {
-      return this.addToCache(fileName, obj);
+      return this.addToCacheFromBuffer(fileName, obj);
     }
 
     if (obj instanceof Readable) {
@@ -67,7 +67,7 @@ class FilesCache {
   }
 
   addToCacheFromBuffer(fileName, buffer) {
-    const sizeOfFile = buffer.length;
+    const sizeOfFile = buffer.byteLength;
 
     if (!this.hasAvailableCapacity(sizeOfFile) || !this.isAllowedSizeOfFile(sizeOfFile)) {
       throw new Error('File is so big for saving to the cache');
@@ -129,4 +129,4 @@ class FilesCache {
   }
 }
 
-module.exports = FilesCache;
+module.exports = Cache;
