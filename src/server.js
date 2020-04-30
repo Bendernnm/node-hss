@@ -42,7 +42,6 @@ class Server extends EventEmitter {
     this.setHeaders = opts.setHeaders || {};
 
     // download parameters
-    this.downloadFile = opts.downloadFile;
     this.downloadFileName = opts.downloadFileName;
     this.downloadFileQuery = opts.downloadFileQuery;
 
@@ -167,7 +166,7 @@ class Server extends EventEmitter {
       }
 
       // download file settings
-      if (this.downloadFile || (this.downloadFileQuery && query[this.downloadFileQuery])) {
+      if (this.downloadFileQuery && query[this.downloadFileQuery]) {
         let downloadFileName = this.downloadFileName || fileName;
 
         if (typeof this.downloadFileName === 'function') {
