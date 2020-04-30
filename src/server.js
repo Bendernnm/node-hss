@@ -71,7 +71,8 @@ class Server extends EventEmitter {
 
   // files utils
   getFileInfo(url) {
-    const fileName = url === '/' ? '/index.html' : url;
+    const fileName = url;
+    const fileOriginName = url.split('/').pop();
     const filePath = path.join(this.staticPath, fileName);
     const fileExtension = path.extname(fileName).substring(1);
     const fileMimeType = mime.getType(fileExtension);
@@ -79,8 +80,9 @@ class Server extends EventEmitter {
     return {
       fileName,
       filePath,
-      fileExtension,
       fileMimeType,
+      fileExtension,
+      fileOriginName,
     };
   }
 
