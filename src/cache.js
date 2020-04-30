@@ -27,6 +27,10 @@ class Cache {
     return this.cache.has(fileName);
   }
 
+  canCacheIt(sizeOfFile) {
+    return this.isAllowedSizeOfFile(sizeOfFile) && this.hasAvailableCapacity(sizeOfFile);
+  }
+
   isAllowedSizeOfFile(sizeOfFile) {
     return this.maxSizeOfCachedFile >= sizeOfFile;
   }

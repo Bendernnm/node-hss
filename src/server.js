@@ -37,6 +37,12 @@ class Server extends EventEmitter {
     // server opts
     this.port = opts.port || 4040;
     this.host = opts.host || 'localhost';
+    this.baseUrl = `http://${this.host}:${this.port}`;
+    this.serverOpts = {
+      port   : this.port,
+      host   : this.host,
+      baseUrl: this.baseUrl,
+    };
 
     // default headers
     this.setHeaders = opts.setHeaders || {};
@@ -224,8 +230,7 @@ class Server extends EventEmitter {
         const buffer = Buffer.from(directoriesStructure);
 
         // cache directory structure
-        if (this.useCache && this.cache.isAllowedSizeOfFile(buffer.byteLength)
-            && this.cache.hasAvailableCapacity(buffer.byteLength)) {
+        if (this.useCache && this.cache.canCacheIt(buffer.byteLength)) {
           this.cache.addToCache(fileName, buffer);
         }
 
@@ -242,9 +247,7 @@ class Server extends EventEmitter {
       const stream = fs.createReadStream(filePath);
 
       // should we cache this file?
-      if (this.useCache
-          && this.cache.isAllowedSizeOfFile(fileStat.size)
-          && this.cache.hasAvailableCapacity(fileStat.size)) {
+      if (this.useCache && this.cache.canCacheIt(fileStat.size)) {
         this.cache.addToCache(fileName, stream);
       }
 
@@ -264,10 +267,7 @@ class Server extends EventEmitter {
     });
 
     this.server.on('error', (err) => this.emit(CONSTANTS.EVENTS.SERVER_ERROR, err));
-    this.server.on('listening', () => this.emit(CONSTANTS.EVENTS.SERVER_START, {
-      host: this.host,
-      port: this.port,
-    }));
+    this.server.on('listening', () => this.emit(CONSTANTS.EVENTS.SERVER_START, this.serverOpts));
     this.server.on('close', () => {
       this.emit(CONSTANTS.EVENTS.SERVER_STOP);
       this.server = null;
