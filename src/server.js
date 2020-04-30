@@ -4,12 +4,11 @@ const http = require('http');
 const path = require('path');
 const { EventEmitter } = require('events');
 
-const mime = require('mime');
+const Cache = require('./cache');
+const templates = require('./templates');
+const { getFileInfo, errorResponse, buildDirectoryStructure } = require('./utils');
 
 const CONSTANTS = require('./const');
-const templates = require('./templates');
-const FilesCache = require('./files-cache');
-const { errorResponse } = require('./utils');
 
 class Server extends EventEmitter {
   constructor(opts = { path: 'public' }) {
@@ -47,6 +46,10 @@ class Server extends EventEmitter {
     this.downloadFileName = opts.downloadFileName;
     this.downloadFileQuery = opts.downloadFileQuery;
 
+    this.showDirectoriesStructure = opts.showDirectoriesStructure;
+
+    this.defaultMimeType = opts.defaultMimeType || 'text/plain';
+
     // template opts
     this.useTemplates = opts.useTemplates;
 
@@ -65,25 +68,8 @@ class Server extends EventEmitter {
         this.cacheOpts.maxSizeOfCachedFile = 1024 * 1024 * 2; // default 2MB
       }
 
-      this.filesCache = new FilesCache(this.cacheOpts);
+      this.cache = new Cache(this.cacheOpts);
     }
-  }
-
-  // files utils
-  getFileInfo(url) {
-    const fileName = url;
-    const fileOriginName = url.split('/').pop();
-    const filePath = path.join(this.staticPath, fileName);
-    const fileExtension = path.extname(fileName).substring(1);
-    const fileMimeType = mime.getType(fileExtension);
-
-    return {
-      fileName,
-      filePath,
-      fileMimeType,
-      fileExtension,
-      fileOriginName,
-    };
   }
 
   // emit immediate emit
@@ -126,8 +112,9 @@ class Server extends EventEmitter {
     }
 
     this.server = http.createServer(async (req, res) => {
-      let cachingThisFile = false;
+      let fileStat;
       const { url, method } = req;
+      const headers = { ...this.setHeaders };
       const { pathname, query } = URL.parse(url, true);
 
       this.immediateEmit(CONSTANTS.EVENTS.SERVER_REQUEST,
@@ -156,24 +143,11 @@ class Server extends EventEmitter {
         });
       }
 
-      const { filePath, fileName, fileMimeType, fileExtension } = this.getFileInfo(pathname);
+      // get basic info about file/directory
+      const { filePath, fileName, fileMimeType, fileExtension } = getFileInfo(this.staticPath,
+        pathname, !this.showDirectoriesStructure);
 
-      // check mimetype
-      if (!fileMimeType) {
-        this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
-          msg : CONSTANTS.MESSAGES.WRONG_FILE_FORMAT,
-          code: CONSTANTS.EVENT_CODES.WRONG_FILE_FORMAT,
-        });
-
-        return errorResponse.bind(res)({
-          statusCode: 400,
-          msg       : this.useTemplates
-            ? this.templates.wrongFileFormat
-            : CONSTANTS.MESSAGES.WRONG_FILE_FORMAT,
-        });
-      }
-
-      // is file's path safe?
+      // is path safe?
       if (!filePath.startsWith(this.staticPath)) {
         this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
           msg : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
@@ -188,11 +162,11 @@ class Server extends EventEmitter {
         });
       }
 
-      const headers = {
-        ...this.setHeaders,
-        'Content-Type': fileMimeType,
-      };
+      if (fileMimeType) {
+        headers['Content-Type'] = fileMimeType;
+      }
 
+      // download file settings
       if (this.downloadFile || (this.downloadFileQuery && query[this.downloadFileQuery])) {
         let downloadFileName = this.downloadFileName || fileName;
 
@@ -203,25 +177,17 @@ class Server extends EventEmitter {
         headers['Content-Disposition'] = `attachment; filename="${downloadFileName}"`;
       }
 
-      // setHeaders
-      res.writeHead(200, headers);
+      // try to get file or directory's structure from cache
+      if (this.useCache && this.cache.hasCache(fileName)) {
+        const fileFromCache = this.cache.getFromCache(fileName);
 
-      // try to get file from cache
-      if (this.useCache && this.filesCache.hasCache(fileName)) {
-        const fileFromCache = this.filesCache.getFromCache(fileName);
-
-        if (fileFromCache) {
-          res.write(fileFromCache);
-          return res.end();
-        }
+        return res.writeHead(200, headers).end(fileFromCache);
       }
 
-      // can we store file to the cache?
-      if (this.useCache) {
-        let fileStats;
-
+      // get file stat
+      if (this.useCache || this.showDirectoriesStructure) {
         try {
-          fileStats = await fs.promises.stat(filePath);
+          fileStat = await fs.promises.stat(filePath);
         } catch (err) {
           return errorResponse.bind(res)({
             statusCode: 404,
@@ -230,17 +196,57 @@ class Server extends EventEmitter {
               : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
           });
         }
-
-        if (this.filesCache.hasAvailableCapacity(fileStats.size)
-            && this.filesCache.isAllowedSizeOfFile(fileStats.size)) {
-          cachingThisFile = true;
-        }
       }
+
+      // is it directory?
+      if (this.showDirectoriesStructure && fileStat.isDirectory()) {
+        let directoriesStructure;
+
+        // build directory structure
+        try {
+          const files = await fs.promises.readdir(filePath);
+
+          directoriesStructure = await buildDirectoryStructure(pathname, files);
+        } catch (err) {
+          this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
+            err,
+            msg : CONSTANTS.MESSAGES.DIRECTORY_NOT_FOUND,
+            code: CONSTANTS.EVENT_CODES.DIRECTORY_NOT_FOUND,
+          });
+
+          return errorResponse.bind(res)({
+            statusCode: 404,
+            msg       : this.useTemplates
+              ? this.templates.directoryNotFound
+              : CONSTANTS.MESSAGES.DIRECTORY_NOT_FOUND,
+          });
+        }
+
+        const buffer = Buffer.from(directoriesStructure);
+
+        // cache directory structure
+        if (this.useCache && this.cache.isAllowedSizeOfFile(buffer.byteLength)
+            && this.cache.hasAvailableCapacity(buffer.byteLength)) {
+          this.cache.addToCache(fileName, buffer);
+        }
+
+        return res.writeHead(200, { 'Content-Type': 'text/html' }).end(directoriesStructure);
+      }
+
+      if (!headers['Content-Type']) {
+        headers['Content-Type'] = this.defaultMimeType;
+      }
+
+      // set headers and status
+      res.writeHead(200, headers);
 
       const stream = fs.createReadStream(filePath);
 
-      if (cachingThisFile) {
-        this.filesCache.addToCache(fileName, stream);
+      // should we cache this file?
+      if (this.useCache
+          && this.cache.isAllowedSizeOfFile(fileStat.size)
+          && this.cache.hasAvailableCapacity(fileStat.size)) {
+        this.cache.addToCache(fileName, stream);
       }
 
       // stream error handler
