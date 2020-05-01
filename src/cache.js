@@ -16,9 +16,8 @@ class Cache {
 
 
     this.cache = new Map();
-    this.availableCapacity = maxSizeOfCache;
 
-    this.maxSizeOfCache = maxSizeOfCache; // required bytes
+    this.availableCapacity = maxSizeOfCache; // required bytes
     this.expirationDuration = expirationDuration; // ms
     this.maxSizeOfCachedFile = maxSizeOfCachedFile; // required bytes
   }
