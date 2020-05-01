@@ -49,9 +49,10 @@ class Cache {
       throw new Error('Item not found');
     }
 
-    if (this.expirationDuration && cache.expiredAt && cache.expiredAt < Date.now()) {
+    if (this.isExpired(fileName)) {
       this.removeFromCache(fileName);
-      return null;
+
+      throw new Error('Item not found');
     }
 
     return cache.buffer;
