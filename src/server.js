@@ -66,10 +66,13 @@ class Server extends EventEmitter {
     this.useCache = opts.useCache;
 
     if (this.useCache) {
-      this.cacheOpts = opts.cacheOpts;
+      this.cacheOpts = opts.cacheOpts || {};
 
       if (!this.cacheOpts.maxSizeOfCache) {
         this.cacheOpts.maxSizeOfCache = 1024 * 1024 * 10; // default 10MB
+      }
+
+      if (!this.cacheOpts.maxSizeOfCachedFile) {
         this.cacheOpts.maxSizeOfCachedFile = 1024 * 1024 * 2; // default 2MB
       }
 
