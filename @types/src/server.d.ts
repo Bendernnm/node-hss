@@ -54,8 +54,6 @@ declare class StaticServer implements StaticServerOpts {
     startServer(): Server;
 
     static setup(opts: StaticServerOpts): Server;
-
-    static test(a: string): string;
 }
 
 export = StaticServer;
