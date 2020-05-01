@@ -2,7 +2,7 @@ const { onEvents } = require('./utils');
 
 const { CONSTANTS, StaticServer } = require('../');
 
-const staticServer = StaticServer.setup().startServer();
+const staticServer = StaticServer.setup({ path: 'public' }).startServer();
 
 onEvents(staticServer, CONSTANTS.EVENTS);
 
