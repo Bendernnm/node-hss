@@ -10,6 +10,7 @@ const watchOpts = Object.freeze({
 class FileWatcher {
   constructor(fileName) {
     this.fileName = fileName;
+    this.fileOriginName = fileName.split('/').pop();
 
     this.startWatch();
   }
@@ -32,9 +33,11 @@ class FileWatcher {
     }
 
     if (eventType === FileWatcher.constants.ET_RENAME) {
+      const newFileName = this.fileName.replace(this.fileOriginName, fileName);
+
       FileWatcher.fileWatcherEvents.emit(FileWatcher.constants.E_RENAMED, {
-        newFileName: fileName,
-        fileName   : this.fileName,
+        newFileName,
+        fileName: this.fileName,
       });
 
       return this.fileName = fileName;
