@@ -33,8 +33,8 @@ class Cache {
     }
   }
 
-  hasCache(fileName) {
-    return this.cache.has(fileName);
+  hasCache(filePath) {
+    return this.cache.has(filePath);
   }
 
   canCacheIt(sizeOfFile) {
@@ -53,15 +53,15 @@ class Cache {
     this.availableCapacity += sizeOfFile;
   }
 
-  getFromCache(fileName) {
-    const cache = this.cache.get(fileName);
+  getFromCache(filePath) {
+    const cache = this.cache.get(filePath);
 
     if (!cache) {
       return null;
     }
 
-    if (this.isExpired(fileName)) {
-      this.removeFromCache(fileName);
+    if (this.isExpired(filePath)) {
+      this.removeFromCache(filePath);
 
       return null;
     }
@@ -69,19 +69,19 @@ class Cache {
     return cache.buffer;
   }
 
-  addToCache(fileName, obj) {
+  addToCache(filePath, obj) {
     if (obj instanceof Buffer) {
-      return this.addToCacheFromBuffer(fileName, obj);
+      return this.addToCacheFromBuffer(filePath, obj);
     }
 
     if (obj instanceof Readable) {
-      return this.addToCacheFromStream(fileName, obj);
+      return this.addToCacheFromStream(filePath, obj);
     }
 
     throw new Error('Passed incorrect second parameter');
   }
 
-  addToCacheFromBuffer(fileName, buffer) {
+  addToCacheFromBuffer(filePath, buffer) {
     const sizeOfFile = buffer.byteLength;
 
     if (!this.hasAvailableCapacity(sizeOfFile) || !this.isAllowedSizeOfFile(sizeOfFile)) {
@@ -97,55 +97,55 @@ class Cache {
       cache.expiredAt = Date.now() + this.expirationDuration;
     }
 
-    this.cache.set(fileName, cache);
+    this.cache.set(filePath, cache);
     this.changeAvailableCapacity(-sizeOfFile);
 
     if (this.watch) {
-      this.fileWathers.set(fileName, FileWatcher.create(fileName));
+      this.fileWathers.set(filePath, FileWatcher.create(filePath));
     }
   }
 
   // should add checking for a length of a buffer
   // if you would like to use this class somewhere else
   // or without checking file's stats before adding to the cache
-  addToCacheFromStream(fileName, stream) {
+  addToCacheFromStream(filePath, stream) {
     let buffer = Buffer.from('');
 
     stream.on('data', (chunk) => buffer = Buffer.concat([ buffer, chunk ]));
 
-    stream.on('end', () => this.addToCacheFromBuffer(fileName, buffer));
+    stream.on('end', () => this.addToCacheFromBuffer(filePath, buffer));
 
     stream.on('error', () => buffer = null);
   }
 
-  removeFromCache(fileName) {
-    const cache = this.cache.get(fileName);
+  removeFromCache(filePath) {
+    const cache = this.cache.get(filePath);
 
     if (!cache) {
       return;
     }
 
-    this.cache.delete(fileName);
+    this.cache.delete(filePath);
     this.changeAvailableCapacity(cache.sizeOfFile);
 
     if (this.watch) {
-      const watcher = this.fileWathers.get(fileName);
+      const watcher = this.fileWathers.get(filePath);
 
       if (!watcher) {
         return;
       }
 
       watcher.stopWatch();
-      this.fileWathers.delete(fileName);
+      this.fileWathers.delete(filePath);
     }
   }
 
-  isExpired(fileName) {
+  isExpired(filePath) {
     if (!this.expirationDuration) {
       return false;
     }
 
-    const cache = this.cache.get(fileName);
+    const cache = this.cache.get(filePath);
 
     if (!cache) {
       throw new Error('File wasn\'t cached');
@@ -161,44 +161,44 @@ class Cache {
   onFileWatcher() {
     const { E_EDITED, E_DELETED, E_RENAMED } = FileWatcher.constants;
 
-    FileWatcher.fileWatcherEvents.on(E_EDITED, async ({ fileName }) => {
+    FileWatcher.fileWatcherEvents.on(E_EDITED, async ({ filePath }) => {
       let buffer;
-      const cache = this.cache.get(fileName);
+      const cache = this.cache.get(filePath);
 
       if (!cache) {
         return;
       }
 
       try {
-        buffer = await fs.promises.readFile(fileName);
+        buffer = await fs.promises.readFile(filePath);
       } catch (err) {
-        return this.removeFromCache(fileName);
+        return this.removeFromCache(filePath);
       }
 
-      this.cache.set(fileName, buffer);
+      this.cache.set(filePath, buffer);
       this.changeAvailableCapacity(cache.sizeOfFile - buffer.byteLength);
     });
 
-    FileWatcher.fileWatcherEvents.on(E_DELETED, ({ fileName }) => this.removeFromCache(fileName));
+    FileWatcher.fileWatcherEvents.on(E_DELETED, ({ filePath }) => this.removeFromCache(filePath));
 
-    FileWatcher.fileWatcherEvents.on(E_RENAMED, async ({ fileName, newFileName }) => {
-      const cache = this.cache.get(fileName);
+    FileWatcher.fileWatcherEvents.on(E_RENAMED, async ({ filePath, newFilePath }) => {
+      const cache = this.cache.get(filePath);
 
       if (!cache) {
         return;
       }
 
-      this.cache.set(newFileName, cache);
-      this.cache.delete(fileName);
+      this.cache.set(newFilePath, cache);
+      this.cache.delete(filePath);
 
-      const watcher = this.fileWathers.get(fileName);
+      const watcher = this.fileWathers.get(filePath);
 
       if (watcher) {
         return;
       }
 
-      this.fileWathers.set(newFileName, watcher);
-      this.fileWathers.delete(fileName);
+      this.fileWathers.set(newFilePath, watcher);
+      this.fileWathers.delete(filePath);
     });
   }
 }

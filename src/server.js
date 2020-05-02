@@ -187,7 +187,7 @@ class Server extends EventEmitter {
 
       // try to get file or directory's structure from cache
       if (this.useCache) {
-        const cache = this.cache.getFromCache(fileName);
+        const cache = this.cache.getFromCache(filePath);
 
         if (cache) {
           return res.writeHead(200, headers).end(cache);
@@ -236,7 +236,7 @@ class Server extends EventEmitter {
 
         // cache directory structure
         if (this.useCache && this.cache.canCacheIt(buffer.byteLength)) {
-          this.cache.addToCache(fileName, buffer);
+          this.cache.addToCache(filePath, buffer);
         }
 
         return res.writeHead(200, { 'Content-Type': 'text/html' }).end(directoriesStructure);
@@ -253,7 +253,7 @@ class Server extends EventEmitter {
 
       // should we cache this file?
       if (this.useCache && this.cache.canCacheIt(fileStat.size)) {
-        this.cache.addToCache(fileName, stream);
+        this.cache.addToCache(filePath, stream);
       }
 
       // stream error handler

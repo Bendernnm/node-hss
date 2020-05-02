@@ -8,22 +8,27 @@ const watchOpts = Object.freeze({
 });
 
 class FileWatcher {
-  constructor(fileName) {
-    this.fileName = fileName;
-    this.fileOriginName = fileName.split('/').pop();
+  constructor(filePath) {
+    this.filePath = filePath;
+    this.fileOriginName = filePath.split('/').pop();
 
     this.startWatch();
   }
 
   startWatch() {
-    this.watcher = fs.watch(this.fileName, watchOpts, this.watcherHandler.bind(this));
+    try {
+      this.watcher = fs.watch(this.filePath, watchOpts, this.watcherHandler.bind(this));
+      return true;
+    } catch (err) {
+      return false;
+    }
   }
 
   stopWatch() {
     this.watcher.close();
   }
 
-  async watcherHandler(eventType, fileName) {
+  async watcherHandler(eventType, filePath) {
     if (eventType === FileWatcher.constants.ET_CLOSE) {
       return this.watcher = null;
     }
@@ -33,37 +38,37 @@ class FileWatcher {
     }
 
     if (eventType === FileWatcher.constants.ET_RENAME) {
-      const newFileName = this.fileName.replace(this.fileOriginName, fileName);
+      const newFilePath = this.filePath.replace(this.fileOriginName, filePath);
 
       FileWatcher.fileWatcherEvents.emit(FileWatcher.constants.E_RENAMED, {
-        newFileName,
-        fileName: this.fileName,
+        newFilePath,
+        filePath: this.filePath,
       });
 
-      return this.fileName = fileName;
+      return this.filePath = filePath;
     }
 
     // eventType === 'change'
-    // if (fileName !== this.fileName) { // renamed
+    // if (filePath !== this.filePath) { // renamed
     //   FileWatcher.fileWatcherEvents.emit(FileWatcher.constants.E_RENAMED, {
-    //     newFileName: fileName,
-    //     fileName   : this.fileName,
+    //     newFilePath: filePath,
+    //     filePath   : this.filePath,
     //   });
     //
-    //   return this.fileName = fileName;
+    //   return this.filePath = filePath;
     // }
 
     try {
-      await fs.promises.access(fileName, fs.constants.R_OK);
+      await fs.promises.access(filePath, fs.constants.R_OK);
 
-      FileWatcher.fileWatcherEvents.emit(FileWatcher.constants.E_EDITED, { fileName }); // edited
+      FileWatcher.fileWatcherEvents.emit(FileWatcher.constants.E_EDITED, { filePath }); // edited
     } catch (err) {
-      FileWatcher.fileWatcherEvents.emit(FileWatcher.constants.E_DELETED, { fileName }); // deleted
+      FileWatcher.fileWatcherEvents.emit(FileWatcher.constants.E_DELETED, { filePath }); // deleted
     }
   }
 
-  static create(fileName) {
-    return new FileWatcher(fileName);
+  static create(filePath) {
+    return new FileWatcher(filePath);
   }
 }
 
