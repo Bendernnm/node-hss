@@ -62,7 +62,7 @@ class FileWatcher {
     }
   }
 
-  static fileWatcher(fileName) {
+  static create(fileName) {
     return new FileWatcher(fileName);
   }
 }
