@@ -1,4 +1,7 @@
+const fs = require('fs');
 const { Readable } = require('stream');
+
+const FileWatcher = require('./file-watcher');
 
 class Cache {
   constructor({ maxSizeOfCache, maxSizeOfCachedFile, expirationDuration, watch }) {
@@ -17,10 +20,17 @@ class Cache {
 
     this.cache = new Map();
 
-    this.watch = watch;
     this.availableCapacity = maxSizeOfCache; // required bytes
     this.expirationDuration = expirationDuration; // ms
     this.maxSizeOfCachedFile = maxSizeOfCachedFile; // required bytes
+
+    this.watch = watch;
+
+    if (this.watch) {
+      this.fileWathers = new Map();
+
+      this.onFileWatcher();
+    }
   }
 
   hasCache(fileName) {
@@ -89,6 +99,10 @@ class Cache {
 
     this.cache.set(fileName, cache);
     this.changeAvailableCapacity(-sizeOfFile);
+
+    if (this.watch) {
+      this.fileWathers.set(fileName, FileWatcher.create(fileName));
+    }
   }
 
   // should add checking for a length of a buffer
@@ -113,6 +127,17 @@ class Cache {
 
     this.cache.delete(fileName);
     this.changeAvailableCapacity(cache.sizeOfFile);
+
+    if (this.watch) {
+      const watcher = this.fileWathers.get(fileName);
+
+      if (!watcher) {
+        return;
+      }
+
+      watcher.stopWatch();
+      this.fileWathers.delete(fileName);
+    }
   }
 
   isExpired(fileName) {
@@ -131,6 +156,50 @@ class Cache {
     }
 
     return Date.now() > cache.expiredAt;
+  }
+
+  onFileWatcher() {
+    const { E_EDITED, E_DELETED, E_RENAMED } = FileWatcher.constants;
+
+    FileWatcher.fileWatcherEvents.on(E_EDITED, async ({ fileName }) => {
+      let buffer;
+      const cache = this.cache.get(fileName);
+
+      if (!cache) {
+        return;
+      }
+
+      try {
+        buffer = await fs.promises.readFile(fileName);
+      } catch (err) {
+        return this.removeFromCache(fileName);
+      }
+
+      this.cache.set(fileName, buffer);
+      this.changeAvailableCapacity(cache.sizeOfFile - buffer.byteLength);
+    });
+
+    FileWatcher.fileWatcherEvents.on(E_DELETED, ({ fileName }) => this.removeFromCache(fileName));
+
+    FileWatcher.fileWatcherEvents.on(E_RENAMED, async ({ fileName, newFileName }) => {
+      const cache = this.cache.get(fileName);
+
+      if (!cache) {
+        return;
+      }
+
+      this.cache.set(newFileName, cache);
+      this.cache.delete(fileName);
+
+      const watcher = this.fileWathers.get(fileName);
+
+      if (watcher) {
+        return;
+      }
+
+      this.fileWathers.set(newFileName, watcher);
+      this.fileWathers.delete(fileName);
+    });
   }
 }
 
