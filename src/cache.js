@@ -1,7 +1,7 @@
 const { Readable } = require('stream');
 
 class Cache {
-  constructor({ maxSizeOfCache, maxSizeOfCachedFile, expirationDuration }) {
+  constructor({ maxSizeOfCache, maxSizeOfCachedFile, expirationDuration, watch }) {
     if (expirationDuration && (typeof expirationDuration !== 'number' || expirationDuration <= 0)) {
       throw new Error('Incorrect expiration duration');
     }
@@ -17,6 +17,7 @@ class Cache {
 
     this.cache = new Map();
 
+    this.watch = watch;
     this.availableCapacity = maxSizeOfCache; // required bytes
     this.expirationDuration = expirationDuration; // ms
     this.maxSizeOfCachedFile = maxSizeOfCachedFile; // required bytes
