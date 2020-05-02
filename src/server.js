@@ -186,16 +186,11 @@ class Server extends EventEmitter {
       }
 
       // try to get file or directory's structure from cache
-      if (this.useCache && this.cache.hasCache(fileName)) {
-        try {
-          const fileFromCache = this.cache.getFromCache(fileName);
+      if (this.useCache) {
+        const cache = this.cache.getFromCache(fileName);
 
-          return res.writeHead(200, headers).end(fileFromCache);
-        } catch (err) {
-          this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
-            msg : CONSTANTS.MESSAGES.FILE_NOT_FOUND_IN_CACHE,
-            code: CONSTANTS.EVENT_CODES.FILE_NOT_FOUND_IN_CACHE,
-          });
+        if (cache) {
+          return res.writeHead(200, headers).end(cache);
         }
       }
 

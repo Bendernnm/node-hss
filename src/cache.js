@@ -46,13 +46,13 @@ class Cache {
     const cache = this.cache.get(fileName);
 
     if (!cache) {
-      throw new Error('Item not found');
+      return null;
     }
 
     if (this.isExpired(fileName)) {
       this.removeFromCache(fileName);
 
-      throw new Error('Item not found');
+      return null;
     }
 
     return cache.buffer;
