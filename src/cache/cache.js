@@ -175,8 +175,13 @@ class Cache {
         return this.removeFromCache(filePath);
       }
 
-      this.cache.set(filePath, buffer);
-      this.changeAvailableCapacity(cache.sizeOfFile - buffer.byteLength);
+      const sizeOfFile = buffer.byteLength;
+
+      this.cache.set(filePath, {
+        buffer,
+        sizeOfFile,
+      });
+      this.changeAvailableCapacity(cache.sizeOfFile - sizeOfFile);
     });
 
     FileWatcher.fileWatcherEvents.on(E_DELETED, ({ filePath }) => this.removeFromCache(filePath));
