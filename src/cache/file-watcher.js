@@ -24,7 +24,7 @@ class FileWatcher {
 
   async watcherHandler(eventType, fileName) {
     if (eventType === FileWatcher.constants.ET_CLOSE) {
-      this.watcher = null;
+      return this.watcher = null;
     }
 
     if (eventType === FileWatcher.constants.ET_ERROR) {
