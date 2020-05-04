@@ -27,8 +27,6 @@ class Cache {
     this.watch = watch;
 
     if (this.watch) {
-      this.fileWathers = new Map();
-
       this.onFileWatcher();
     }
   }
@@ -84,7 +82,7 @@ class Cache {
   addToCacheFromBuffer(filePath, buffer) {
     const sizeOfFile = buffer.byteLength;
 
-    if (!this.hasAvailableCapacity(sizeOfFile) || !this.isAllowedSizeOfFile(sizeOfFile)) {
+    if (!this.canCacheIt(sizeOfFile)) {
       throw new Error('File is so big for saving to the cache');
     }
 
@@ -97,12 +95,12 @@ class Cache {
       cache.expiredAt = Date.now() + this.expirationDuration;
     }
 
+    if (this.watch) {
+      cache.fileWatcher = FileWatcher.create(filePath);
+    }
+
     this.cache.set(filePath, cache);
     this.changeAvailableCapacity(-sizeOfFile);
-
-    if (this.watch) {
-      this.fileWathers.set(filePath, FileWatcher.create(filePath));
-    }
   }
 
   // should add checking for a length of a buffer
@@ -125,19 +123,16 @@ class Cache {
       return;
     }
 
-    this.cache.delete(filePath);
-    this.changeAvailableCapacity(cache.sizeOfFile);
-
     if (this.watch) {
-      const watcher = this.fileWathers.get(filePath);
+      const fileWatcher = cache.fileWatcher;
 
-      if (!watcher) {
-        return;
+      if (fileWatcher) {
+        fileWatcher.stopWatch();
       }
-
-      watcher.stopWatch();
-      this.fileWathers.delete(filePath);
     }
+
+    this.changeAvailableCapacity(cache.sizeOfFile);
+    this.cache.delete(filePath);
   }
 
   isExpired(filePath) {
@@ -175,13 +170,8 @@ class Cache {
         return this.removeFromCache(filePath);
       }
 
-      const sizeOfFile = buffer.byteLength;
-
-      this.cache.set(filePath, {
-        buffer,
-        sizeOfFile,
-      });
-      this.changeAvailableCapacity(cache.sizeOfFile - sizeOfFile);
+      this.changeAvailableCapacity(cache.sizeOfFile);
+      this.addToCacheFromBuffer(filePath, buffer);
     });
 
     FileWatcher.fileWatcherEvents.on(E_DELETED, ({ filePath }) => this.removeFromCache(filePath));
@@ -195,15 +185,6 @@ class Cache {
 
       this.cache.set(newFilePath, cache);
       this.cache.delete(filePath);
-
-      const watcher = this.fileWathers.get(filePath);
-
-      if (watcher) {
-        return;
-      }
-
-      this.fileWathers.set(newFilePath, watcher);
-      this.fileWathers.delete(filePath);
     });
   }
 }
