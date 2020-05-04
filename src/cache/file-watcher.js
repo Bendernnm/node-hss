@@ -52,6 +52,8 @@ class FileWatcher {
         newFilePath,
         filePath: this.filePath,
       }); // rename
+
+      this.filePath = newFilePath;
     } catch (err) {
       FileWatcher.fileWatcherEvents.emit(FileWatcher.constants.E_DELETED,
         { filePath: this.filePath }); // deleted
