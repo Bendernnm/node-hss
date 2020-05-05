@@ -1,4 +1,7 @@
+import { IncomingMessage, ServerResponse } from 'http';
+
 import Cache from './cache';
+import ErrorMessages from './utils/error-messages';
 
 interface CacheOpts {
     maxSizeOfCache: number;
@@ -29,31 +32,49 @@ interface StaticServerOpts {
 
     useTemplates?: boolean;
 
-    useCache?: string;
+    useCache?: boolean;
     cacheOpts?: CacheOpts;
 }
 
 declare class StaticServer implements StaticServerOpts {
+    public path: string;
     public staticPath: string;
 
+    public host: string;
+    public port: number;
     public baseUrl: string;
     public serverOpts: ServerOpts;
 
+    public setHeaders?: any;
+
+    public downloadFileName?: string | Function;
+    public downloadFileQuery?: string;
+
+    public showDirectoriesStructure?: boolean;
+
+    public defaultMimeType: string;
+
+    public useTemplates?: boolean;
     public templates?: any;
 
+    public errorMsg: ErrorMessages;
+
+    public useCache?: boolean;
     public cache?: Cache;
 
     constructor(opts: string | StaticServerOpts);
 
-    immediateEmit(eventName: string, args: any): Server;
+    immediateEmit(eventName: string, args: any): this;
 
-    stopServer(): Server;
+    stopServer(): this;
 
-    restartServer(): Server;
+    restartServer(): this;
 
-    startServer(): Server;
+    startServer(): this;
 
-    static setup(opts: StaticServerOpts): Server;
+    async serverHandler(req: IncomingMessage, res: ServerResponse): void;
+
+    static setup(opts: StaticServerOpts): StaticServer;
 }
 
 export = StaticServer;
