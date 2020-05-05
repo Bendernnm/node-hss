@@ -6,7 +6,7 @@ const { EventEmitter } = require('events');
 
 const Cache = require('./cache');
 const templates = require('./templates');
-const { getFileInfo, errorResponse, buildDirectoryStructure } = require('./utils');
+const { ErrorMessages, getFileInfo, errorResponse, buildDirectoryStructure } = require('./utils');
 
 const CONSTANTS = require('./const');
 
@@ -44,10 +44,8 @@ class Server extends EventEmitter {
       baseUrl: this.baseUrl,
     };
 
-    // default headers
     this.setHeaders = opts.setHeaders || {};
 
-    // download parameters
     this.downloadFileName = opts.downloadFileName;
     this.downloadFileQuery = opts.downloadFileQuery;
 
@@ -55,14 +53,20 @@ class Server extends EventEmitter {
 
     this.defaultMimeType = opts.defaultMimeType || 'text/plain';
 
-    // template opts
     this.useTemplates = opts.useTemplates;
+
+    this.errorMsg = new ErrorMessages({ useTemplates: this.useTemplates });
+    this.errorMsg.setTexts({
+      notAllowedMethod : CONSTANTS.MESSAGES.WRONG_METHOD,
+      fileNotFound     : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+      directoryNotFound: CONSTANTS.MESSAGES.DIRECTORY_NOT_FOUND,
+    });
 
     if (this.useTemplates) {
       this.templates = { ...templates, ...(opts.templates || {}) };
+      this.errorMsg.setTemplates(this.templates);
     }
 
-    // cache opts
     this.useCache = opts.useCache;
 
     if (this.useCache) {
@@ -80,7 +84,6 @@ class Server extends EventEmitter {
     }
   }
 
-  // emit immediate emit
   immediateEmit(eventName, args = {}) {
     setImmediate(() => this.emit(eventName, args));
 
@@ -283,7 +286,6 @@ class Server extends EventEmitter {
     return this;
   }
 
-  // static methods
   static setup(opts) {
     return new Server(opts);
   }
