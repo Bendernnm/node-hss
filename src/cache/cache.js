@@ -103,7 +103,7 @@ class Cache {
     this.changeAvailableCapacity(-sizeOfFile);
   }
 
-  // should add checking for a length of a buffer
+  // should add checking for a length of a created buffer
   // if you would like to use this class somewhere else
   // or without checking file's stats before adding to the cache
   addToCacheFromStream(filePath, stream) {
