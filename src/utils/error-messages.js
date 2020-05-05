@@ -6,11 +6,11 @@ class ErrorMessages {
   }
 
   setTemplates(templates) {
-    this.setObjects('templates', templates);
+    return this.setObjects('templates', templates);
   }
 
   setTexts(texts) {
-    this.setObjects('texts', texts);
+    return this.setObjects('texts', texts);
   }
 
   setObjects(type, objects) {
@@ -19,6 +19,8 @@ class ErrorMessages {
     }
 
     Object.keys(objects).forEach(key => this[type][key] = objects[key]);
+
+    return this;
   }
 
   msg() {
