@@ -156,36 +156,44 @@ class Cache {
   onFileWatcher() {
     const { E_EDITED, E_DELETED, E_RENAMED } = FileWatcher.constants;
 
-    FileWatcher.fileWatcherEvents.on(E_EDITED, async ({ filePath }) => {
-      let buffer;
-      const cache = this.cache.get(filePath);
+    FileWatcher.fileWatcherEvents.on(E_EDITED, this.watcherEdited.bind(this));
 
-      if (!cache) {
-        return;
-      }
+    FileWatcher.fileWatcherEvents.on(E_DELETED, this.watcherDeleted.bind(this));
 
-      try {
-        buffer = await fs.promises.readFile(filePath);
-      } catch (err) {
-        return this.removeFromCache(filePath);
-      }
+    FileWatcher.fileWatcherEvents.on(E_RENAMED, this.watcherRenamed.bind(this));
+  }
 
-      this.changeAvailableCapacity(cache.sizeOfFile);
-      this.addToCacheFromBuffer(filePath, buffer);
-    });
+  async watcherEdited({ filePath }) {
+    let buffer;
+    const cache = this.cache.get(filePath);
 
-    FileWatcher.fileWatcherEvents.on(E_DELETED, ({ filePath }) => this.removeFromCache(filePath));
+    if (!cache) {
+      return;
+    }
 
-    FileWatcher.fileWatcherEvents.on(E_RENAMED, async ({ filePath, newFilePath }) => {
-      const cache = this.cache.get(filePath);
+    try {
+      buffer = await fs.promises.readFile(filePath);
+    } catch (err) {
+      return this.removeFromCache(filePath);
+    }
 
-      if (!cache) {
-        return;
-      }
+    this.changeAvailableCapacity(cache.sizeOfFile);
+    this.addToCacheFromBuffer(filePath, buffer);
+  }
 
-      this.cache.set(newFilePath, cache);
-      this.cache.delete(filePath);
-    });
+  async watcherDeleted({ filePath }) {
+    this.removeFromCache(filePath);
+  }
+
+  async watcherRenamed({ filePath, newFilePath }) {
+    const cache = this.cache.get(filePath);
+
+    if (!cache) {
+      return;
+    }
+
+    this.cache.set(newFilePath, cache);
+    this.cache.delete(filePath);
   }
 }
 
