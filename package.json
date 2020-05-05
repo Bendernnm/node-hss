@@ -2,6 +2,7 @@
   "name": "server-static",
   "version": "1.0.0",
   "dependencies": {
+    "jest": "26.0.1",
     "mime": "2.4.4"
   },
   "devDependencies": {
