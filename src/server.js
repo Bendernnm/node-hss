@@ -122,149 +122,7 @@ class Server extends EventEmitter {
       return this.server;
     }
 
-    this.server = http.createServer(async (req, res) => {
-      let fileStat;
-      const { url, method } = req;
-      const headers = { ...this.setHeaders };
-      const { pathname, query } = URL.parse(url, true);
-
-      this.immediateEmit(CONSTANTS.EVENTS.SERVER_REQUEST,
-        {
-          url,
-          query,
-          method,
-          pathname,
-          code: CONSTANTS.EVENT_CODES.SERVER_REQUEST,
-        });
-
-      // if request's method is wrong
-      if (method !== CONSTANTS.REQUEST_METHODS.GET && method !== CONSTANTS.REQUEST_METHODS.HEAD) {
-        this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
-          method: req.method,
-          msg   : CONSTANTS.MESSAGES.WRONG_MESSAGE,
-          code  : CONSTANTS.EVENT_CODES.WRONG_MESSAGE,
-        });
-
-        return errorResponse.bind(res)({
-          statusCode: 405,
-          headers   : { Allow: 'GET, HEAD' },
-          msg       : this.errorMsg.msg().notAllowedMethod,
-        });
-      }
-
-      // get basic info about file/directory
-      const { filePath, fileName, fileMimeType, fileExtension } = getFileInfo(this.staticPath,
-        pathname, !this.showDirectoriesStructure);
-
-      // is path safe?
-      if (!filePath.startsWith(this.staticPath)) {
-        this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
-          msg : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
-          code: CONSTANTS.EVENT_CODES.FILE_NOT_FOUND,
-        });
-
-        return errorResponse.bind(res)({
-          statusCode: 404,
-          msg       : this.errorMsg.msg().fileNotFound,
-        });
-      }
-
-      if (fileMimeType) {
-        headers['Content-Type'] = fileMimeType;
-      }
-
-      // download file settings
-      if (this.downloadFileQuery && query[this.downloadFileQuery]) {
-        let downloadFileName = this.downloadFileName || fileName;
-
-        if (typeof this.downloadFileName === 'function') {
-          downloadFileName = this.downloadFileName(fileName, fileExtension);
-        }
-
-        headers['Content-Disposition'] = `attachment; filename="${downloadFileName}"`;
-      }
-
-      // try to get file or directory's structure from cache
-      if (this.useCache) {
-        const cache = this.cache.getFromCache(filePath);
-
-        if (cache) {
-          return res.writeHead(200, headers).end(cache);
-        }
-      }
-
-      // get file stat
-      if (this.useCache || this.showDirectoriesStructure) {
-        try {
-          fileStat = await fs.promises.stat(filePath);
-        } catch (err) {
-          return errorResponse.bind(res)({
-            statusCode: 404,
-            msg       : this.errorMsg.msg().fileNotFound,
-          });
-        }
-      }
-
-      // is it directory?
-      if (this.showDirectoriesStructure && fileStat.isDirectory()) {
-        let directoriesStructure;
-
-        // build directory structure
-        try {
-          const files = await fs.promises.readdir(filePath);
-
-          directoriesStructure = await buildDirectoryStructure(pathname, files);
-        } catch (err) {
-          this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
-            err,
-            msg : CONSTANTS.MESSAGES.DIRECTORY_NOT_FOUND,
-            code: CONSTANTS.EVENT_CODES.DIRECTORY_NOT_FOUND,
-          });
-
-          return errorResponse.bind(res)({
-            statusCode: 404,
-            msg       : this.errorMsg.msg().directoryNotFound,
-          });
-        }
-
-        const buffer = Buffer.from(directoriesStructure);
-
-        // cache directory structure
-        if (this.useCache && this.cache.canCacheIt(buffer.byteLength)) {
-          this.cache.addToCache(filePath, buffer);
-        }
-
-        return res.writeHead(200, { 'Content-Type': 'text/html' }).end(directoriesStructure);
-      }
-
-      if (!headers['Content-Type']) {
-        headers['Content-Type'] = this.defaultMimeType;
-      }
-
-      // set headers and status
-      res.writeHead(200, headers);
-
-      const stream = fs.createReadStream(filePath);
-
-      // should we cache this file?
-      if (this.useCache && this.cache.canCacheIt(fileStat.size)) {
-        this.cache.addToCache(filePath, stream);
-      }
-
-      // stream error handler
-      stream.on('error', (err) => {
-        this.immediateEmit(CONSTANTS.EVENTS.STREAM_ERROR, err);
-
-        errorResponse.bind(res)({
-          statusCode: 404,
-          msg       : this.useTemplates
-            ? this.templates.fileNotFound
-            : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
-        });
-      });
-
-      stream.pipe(res);
-    });
+    this.server = http.createServer(this.serverHandler.bind(this));
 
     this.server.on('error', (err) => this.emit(CONSTANTS.EVENTS.SERVER_ERROR, err));
     this.server.on('listening', () => this.emit(CONSTANTS.EVENTS.SERVER_START, this.serverOpts));
@@ -276,6 +134,150 @@ class Server extends EventEmitter {
     this.server.listen(this.port, this.host);
 
     return this;
+  }
+
+  async serverHandler(req, res) {
+    let fileStat;
+    const { url, method } = req;
+    const headers = { ...this.setHeaders };
+    const { pathname, query } = URL.parse(url, true);
+
+    this.immediateEmit(CONSTANTS.EVENTS.SERVER_REQUEST,
+      {
+        url,
+        query,
+        method,
+        pathname,
+        code: CONSTANTS.EVENT_CODES.SERVER_REQUEST,
+      });
+
+    // if request's method is wrong
+    if (method !== CONSTANTS.REQUEST_METHODS.GET && method !== CONSTANTS.REQUEST_METHODS.HEAD) {
+      this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
+        method: req.method,
+        msg   : CONSTANTS.MESSAGES.WRONG_MESSAGE,
+        code  : CONSTANTS.EVENT_CODES.WRONG_MESSAGE,
+      });
+
+      return errorResponse.bind(res)({
+        statusCode: 405,
+        headers   : { Allow: 'GET, HEAD' },
+        msg       : this.errorMsg.msg().notAllowedMethod,
+      });
+    }
+
+    // get basic info about file/directory
+    const { filePath, fileName, fileMimeType, fileExtension } = getFileInfo(this.staticPath,
+      pathname, !this.showDirectoriesStructure);
+
+    // is path safe?
+    if (!filePath.startsWith(this.staticPath)) {
+      this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
+        msg : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+        code: CONSTANTS.EVENT_CODES.FILE_NOT_FOUND,
+      });
+
+      return errorResponse.bind(res)({
+        statusCode: 404,
+        msg       : this.errorMsg.msg().fileNotFound,
+      });
+    }
+
+    if (fileMimeType) {
+      headers['Content-Type'] = fileMimeType;
+    }
+
+    // download file settings
+    if (this.downloadFileQuery && query[this.downloadFileQuery]) {
+      let downloadFileName = this.downloadFileName || fileName;
+
+      if (typeof this.downloadFileName === 'function') {
+        downloadFileName = this.downloadFileName(fileName, fileExtension);
+      }
+
+      headers['Content-Disposition'] = `attachment; filename="${downloadFileName}"`;
+    }
+
+    // try to get file or directory's structure from cache
+    if (this.useCache) {
+      const cache = this.cache.getFromCache(filePath);
+
+      if (cache) {
+        return res.writeHead(200, headers).end(cache);
+      }
+    }
+
+    // get file stat
+    if (this.useCache || this.showDirectoriesStructure) {
+      try {
+        fileStat = await fs.promises.stat(filePath);
+      } catch (err) {
+        return errorResponse.bind(res)({
+          statusCode: 404,
+          msg       : this.errorMsg.msg().fileNotFound,
+        });
+      }
+    }
+
+    // is it directory?
+    if (this.showDirectoriesStructure && fileStat.isDirectory()) {
+      let directoriesStructure;
+
+      // build directory structure
+      try {
+        const files = await fs.promises.readdir(filePath);
+
+        directoriesStructure = await buildDirectoryStructure(pathname, files);
+      } catch (err) {
+        this.immediateEmit(CONSTANTS.EVENTS.SERVER_WARNING, {
+          err,
+          msg : CONSTANTS.MESSAGES.DIRECTORY_NOT_FOUND,
+          code: CONSTANTS.EVENT_CODES.DIRECTORY_NOT_FOUND,
+        });
+
+        return errorResponse.bind(res)({
+          statusCode: 404,
+          msg       : this.errorMsg.msg().directoryNotFound,
+        });
+      }
+
+      const buffer = Buffer.from(directoriesStructure);
+
+      // cache directory structure
+      if (this.useCache && this.cache.canCacheIt(buffer.byteLength)) {
+        this.cache.addToCache(filePath, buffer);
+      }
+
+      return res.writeHead(200, { 'Content-Type': 'text/html' }).end(directoriesStructure);
+    }
+
+    if (!headers['Content-Type']) {
+      headers['Content-Type'] = this.defaultMimeType;
+    }
+
+    // set headers and status
+    res.writeHead(200, headers);
+
+    const stream = fs.createReadStream(filePath);
+
+    // should we cache this file?
+    if (this.useCache && this.cache.canCacheIt(fileStat.size)) {
+      this.cache.addToCache(filePath, stream);
+    }
+
+    // stream error handler
+    stream.on('error', (err) => {
+      this.immediateEmit(CONSTANTS.EVENTS.STREAM_ERROR, err);
+
+      errorResponse.bind(res)({
+        statusCode: 404,
+        msg       : this.useTemplates
+          ? this.templates.fileNotFound
+          : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+      });
+    });
+
+    stream.pipe(res);
   }
 
   static setup(opts) {
