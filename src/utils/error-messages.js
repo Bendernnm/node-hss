@@ -1,6 +1,6 @@
 class ErrorMessages {
   constructor({ useTemplates }) {
-    this.type = useTemplates ? 'template' : 'text';
+    this.type = useTemplates ? 'templates' : 'texts';
     this.texts = {};
     this.templates = {};
   }
@@ -14,15 +14,15 @@ class ErrorMessages {
   }
 
   setObjects(type, objects) {
-    if (type !== 'texts' || type !== 'templates') {
+    if (type !== 'texts' && type !== 'templates') {
       throw new Error('Incorrect type');
     }
 
     Object.keys(objects).forEach(key => this[type][key] = objects[key]);
   }
 
-  msg(errorName) {
-    return this[this.type][errorName] || 'Error message';
+  msg() {
+    return this[this.type];
   }
 
   static create(opts) {
