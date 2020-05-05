@@ -148,9 +148,7 @@ class Server extends EventEmitter {
         return errorResponse.bind(res)({
           statusCode: 405,
           headers   : { Allow: 'GET, HEAD' },
-          msg       : this.useTemplates
-            ? this.templates.notAllowedMethod
-            : CONSTANTS.MESSAGES.WRONG_METHOD,
+          msg       : this.errorMsg.msg().notAllowedMethod,
         });
       }
 
@@ -167,9 +165,7 @@ class Server extends EventEmitter {
 
         return errorResponse.bind(res)({
           statusCode: 404,
-          msg       : this.useTemplates
-            ? this.templates.fileNotFound
-            : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+          msg       : this.errorMsg.msg().fileNotFound,
         });
       }
 
@@ -204,9 +200,7 @@ class Server extends EventEmitter {
         } catch (err) {
           return errorResponse.bind(res)({
             statusCode: 404,
-            msg       : this.useTemplates
-              ? this.templates.fileNotFound
-              : CONSTANTS.MESSAGES.FILE_NOT_FOUND,
+            msg       : this.errorMsg.msg().fileNotFound,
           });
         }
       }
@@ -229,9 +223,7 @@ class Server extends EventEmitter {
 
           return errorResponse.bind(res)({
             statusCode: 404,
-            msg       : this.useTemplates
-              ? this.templates.directoryNotFound
-              : CONSTANTS.MESSAGES.DIRECTORY_NOT_FOUND,
+            msg       : this.errorMsg.msg().directoryNotFound,
           });
         }
 
