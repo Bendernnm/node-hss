@@ -237,7 +237,7 @@ class Server extends EventEmitter {
         this.cache.addToCache(fileInfo.filePath, stream);
       }
 
-      // stream error handler
+      // stream error handler, possible to use stream process (check it - _stream-process.js)
       stream.on('error', (err) => {
         this.immediateEmit(CONSTANTS.EVENTS.STREAM_ERROR, err);
 
