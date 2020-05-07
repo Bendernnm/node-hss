@@ -1,11 +1,11 @@
+const pathIsSafe = require('./path-is-safe');
 const getFileInfo = require('./get-file-info');
-const ErrorMessages = require('./error-messages');
-const errorResponse = require('./error-response');
+const verifyRequestMethod = require('./verify-request-method');
 const buildDirectoryStructure = require('./build-directories-structure');
 
 module.exports = {
-  ErrorMessages,
+  pathIsSafe,
   getFileInfo,
-  errorResponse,
+  verifyRequestMethod,
   buildDirectoryStructure,
 };
