@@ -9,6 +9,7 @@ const templates = require('./templates');
 const { CustomError, Errors } = require('./error');
 const {
   pathIsSafe,
+  pipeStreams,
   getFileInfo,
   verifyRequestMethod,
   buildDirectoryStructure,
@@ -231,23 +232,19 @@ class Server extends EventEmitter {
 
       res.writeHead(200, headers);
 
-      const stream = fs.createReadStream(fileInfo.filePath);
+      const readStream = fs.createReadStream(fileInfo.filePath);
 
       if (this.useCache && this.cache.canCacheIt(fileStat.size)) {
-        this.cache.addToCache(fileInfo.filePath, stream);
+        this.cache.addToCache(fileInfo.filePath, readStream);
       }
 
-      // stream error handler, possible to use stream process (check it - _stream-process.js)
-      stream.on('error', (err) => {
+      try {
+        await pipeStreams(readStream, res);
+      } catch (err) {
         this.immediateEmit(CONSTANTS.EVENTS.STREAM_ERROR, err);
 
-        const msg = this.templates.directoryNotFound || CONSTANTS.MESSAGES.DIRECTORY_NOT_FOUND;
-
-        res.statusCode = 404;
-        return res.end(Buffer.from(msg));
-      });
-
-      stream.pipe(res);
+        throw Errors.fileNotFound(this.templates.fileNotFound);
+      }
     } catch (err) {
       if (!CustomError.isCustomError(err)) {
         res.statusCode = 500;
