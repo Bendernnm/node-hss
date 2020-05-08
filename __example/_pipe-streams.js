@@ -1,22 +1,17 @@
 const fs = require('fs');
 
-const pipeStreams = (readStream, writeStream) => new Promise((resolve, reject) => {
-  writeStream.on('close', () => resolve());
+const { pipeStreams } = require('../src/utils');
 
-  readStream.on('error', err => reject(err));
-  writeStream.on('error', err => reject(err));
-
-  readStream.pipe(writeStream);
-});
-
-(async function f() {
+(async function main() {
   try {
     const readStream = fs.createReadStream('./public/1.txt');
     const writeStream = fs.createWriteStream('./2.txt');
 
     await pipeStreams(readStream, writeStream);
+
+    console.log('finished');
   } catch (err) {
     console.error('handled');
     console.error(err);
   }
-})();
+}());
