@@ -24,6 +24,7 @@
     "object-curly-newline": "off",
     "no-return-assign": "off",
     "array-bracket-spacing": "off",
-    "arrow-parens": "off"
+    "arrow-parens": "off",
+    "wrap-iife": "off"
   }
 }
