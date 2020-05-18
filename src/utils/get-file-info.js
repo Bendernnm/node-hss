@@ -9,7 +9,7 @@ module.exports = (staticPath, url, useDefaultFileName = true) => {
     fileName = '/index.html';
   }
 
-  const fileOriginName = url.split('/').pop();
+  const fileOriginName = fileName.split('/').pop();
   const filePath = path.join(staticPath, fileName);
   const fileExtension = path.extname(fileName).substring(1);
   const fileMimeType = mime.getType(fileExtension);
