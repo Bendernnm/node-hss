@@ -54,3 +54,33 @@ describe('Custom files', () => {
 
   afterAll(() => jest.clearAllMocks());
 });
+
+describe('Default file', () => {
+  const url = '/';
+  const staticPath = '/static';
+
+  const fileExtension = 'html';
+  const fileMimeType = 'text/html';
+  const filePath = `${staticPath}${url}`;
+
+  beforeAll(() => filesBeforeAllMocks({
+    url,
+    staticPath,
+    fileMimeType,
+    fileExtension,
+  }));
+
+  it('should return info about default file, using default file name', () => {
+    const fileInfo = getFileInfo(staticPath, url, true);
+
+    expect(fileInfo).toEqual({
+      filePath,
+      fileMimeType,
+      fileExtension,
+      fileName      : '/index.html',
+      fileOriginName: 'index.html',
+    });
+  });
+
+  afterAll(() => jest.clearAllMocks());
+});
