@@ -84,3 +84,70 @@ describe('Default file', () => {
 
   afterAll(() => jest.clearAllMocks());
 });
+
+describe('Directory', () => {
+  let mockPathJoin;
+  const staticPath = '/static';
+
+  beforeAll(() => {
+    jest.clearAllMocks();
+
+    jest.spyOn(path, 'extname').mockReturnValue('');
+
+    jest.spyOn(mime, 'getType').mockReturnValue('');
+  });
+
+  beforeEach(() => {
+    if (mockPathJoin) {
+      mockPathJoin.mockClear();
+    }
+  });
+
+  it('should return info about directory', () => {
+    const url = '/folder';
+
+    jest.spyOn(path, 'join').mockReturnValue(`${staticPath}${url}`);
+
+    const fileInfo = getFileInfo(staticPath, url, false);
+
+    expect(fileInfo).toEqual({
+      fileMimeType  : '',
+      fileExtension : '',
+      fileName      : url,
+      fileOriginName: 'folder',
+      filePath      : `${staticPath}${url}`,
+    });
+  });
+
+  it('should return info about directory, url end with /', () => {
+    const url = '/folder/';
+
+    jest.spyOn(path, 'join').mockReturnValue(`${staticPath}${url}`);
+
+    const fileInfo = getFileInfo(staticPath, url, false);
+
+    expect(fileInfo).toEqual({
+      fileMimeType  : '',
+      fileExtension : '',
+      fileOriginName: '',
+      fileName      : url,
+      filePath      : `${staticPath}${url}`,
+    });
+  });
+
+  it('should return info about directory, using default path', () => {
+    const url = '/';
+
+    jest.spyOn(path, 'join').mockReturnValue(`${staticPath}${url}`);
+
+    const fileInfo = getFileInfo(staticPath, url, false);
+
+    expect(fileInfo).toEqual({
+      fileMimeType  : '',
+      fileExtension : '',
+      fileOriginName: '',
+      fileName      : url,
+      filePath      : `${staticPath}${url}`,
+    });
+  });
+});
