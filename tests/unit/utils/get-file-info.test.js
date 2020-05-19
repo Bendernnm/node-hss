@@ -86,7 +86,6 @@ describe('Default file', () => {
 });
 
 describe('Directory', () => {
-  let mockPathJoin;
   const staticPath = '/static';
 
   beforeAll(() => {
@@ -95,12 +94,6 @@ describe('Directory', () => {
     jest.spyOn(path, 'extname').mockReturnValue('');
 
     jest.spyOn(mime, 'getType').mockReturnValue('');
-  });
-
-  beforeEach(() => {
-    if (mockPathJoin) {
-      mockPathJoin.mockClear();
-    }
   });
 
   it('should return info about directory', () => {
