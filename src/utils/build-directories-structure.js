@@ -1,7 +1,7 @@
-module.exports = async (staticPath, files) => {
+module.exports = (staticPath, files) => {
   let listOfItems = '';
   const indexOfLastSymbol = staticPath.length - 1;
-  const path = staticPath[indexOfLastSymbol] === '/'
+  const path = staticPath.length > 1 && staticPath[indexOfLastSymbol] === '/'
     ? staticPath.substring(0, indexOfLastSymbol)
     : staticPath;
 
@@ -11,10 +11,10 @@ module.exports = async (staticPath, files) => {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>${staticPath}</title>
+    <title>${path}</title>
 </head>
 <body>
-<h2>Directory (${staticPath}):</h2>
+<h2>Directory (${path}):</h2>
 <ul>${listOfItems}</ul>
 </body>
 </html>`;
