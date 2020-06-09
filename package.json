@@ -2,6 +2,7 @@
   "name": "server-static",
   "version": "1.0.0",
   "scripts": {
+    "sonar-scann": "sonar-scanner -Dproject.settings=./sonar.properties",
     "tests": "jest ./tests"
   },
   "dependencies": {
