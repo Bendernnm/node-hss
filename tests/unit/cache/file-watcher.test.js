@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const FileWatcher = require('../../src/cache/file-watcher');
+const FileWatcher = require('../../../src/cache/file-watcher');
 
 let spyFsWatch;
 
