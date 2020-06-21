@@ -1,6 +1,6 @@
 {
   "name": "server-static",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "sonar-scann": "sonar-scanner -Dproject.settings=./sonar.properties",
     "tests": "jest ./tests"
