@@ -1,6 +1,25 @@
 {
   "name": "node-shh",
   "version": "1.0.1",
+  "keywords": [
+    "static",
+    "server",
+    "http",
+    "node",
+    "hss",
+    "node-hss"
+  ],
+  "contributors": [
+    {
+      "name": "Dmytro",
+      "email": "bender.d1mon@gmail.com",
+      "url": "https://www.linkedin.com/in/dmytro-olashyn-a3479512b/"
+    }
+  ],
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/Bendernnm/server-static"
+  },
   "scripts": {
     "sonar-scann": "sonar-scanner -Dproject.settings=./sonar.properties",
     "tests": "jest ./tests"
