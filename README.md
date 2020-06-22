@@ -36,7 +36,7 @@ If you haven't enough time for reading a lot of instructions or chief annoying y
 
 3. Create `public` folder at the same level as the server.js file. 
 
-4. Put several files for sharing to the `public` folder. For starting to create the index.htm and text.txt ;)
+4. Put several files for sharing to the `public` folder. For starting to create the `index.htm` and `text.txt` ;)
 
 5. Launch the browser and go to `http://127.0.0.1:4040`. Then you can choose any file in your folder for sharing, for example - `http://127.0.0.1:4040/text/txt`.
 
