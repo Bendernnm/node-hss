@@ -23,7 +23,7 @@ If you haven't enough time for reading a lot of instructions or chief annoying y
 1. Install
 
     ```jsx
-    npm install package-name
+    npm install node-shh
     ```
 
 2. Create *server.js* file and put this code here:
