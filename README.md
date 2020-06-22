@@ -3,7 +3,7 @@
 ## Install
 
 ```jsx
-npm install --save node-hss
+npm install --save node-shh
 ```
 
 ## Description
@@ -29,12 +29,16 @@ If you haven't enough time for reading a lot of instructions or chief annoying y
 2. Create *server.js* file and put this code here:
 
     ```jsx
-    const { StaticServer } = require('package-name');
+    const { StaticServer } = require('node-shh');
 
     StaticServer.setup().startServer();
     ```
 
-3. Then create public folder in the same level to the server.js file. And put several files for sharing. Like in this amazing picture:
+3. Create `public` folder at the same level as the server.js file. 
+
+4. Put several files for sharing to the `public` folder. For starting to create the index.htm and text.txt ;)
+
+5. Launch the browser and go to `http://127.0.0.1:4040`. Then you can choose any file in your folder for sharing, for example - `http://127.0.0.1:4040/text/txt`.
 
 ## Features
 
@@ -52,6 +56,7 @@ Check more examples in __examples folder
 ## Plans for future
 
 - [ ]  Use default util - pipeline
+- [ ]  Templates issue
 - [ ]  Rename Cache to CacheStorage
 - [ ]  Cover the project with tests
 - [ ]  Write article

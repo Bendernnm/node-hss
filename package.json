@@ -6,8 +6,8 @@
     "server",
     "http",
     "node",
-    "hss",
-    "node-hss"
+    "shh",
+    "node-shh"
   ],
   "contributors": [
     {
